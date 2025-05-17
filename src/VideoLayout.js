@@ -4,7 +4,7 @@ const KitchenViewer = () => {
   const skyRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(60000); // default rotation speed
-  const [currentImage, setCurrentImage] = useState("/images/kitchen2.jpg");
+  const [currentImage, setCurrentImage] = useState("/images/kamalsir.jpeg");
 
   const thumbnails = [
     "/images/elevation.webp",
