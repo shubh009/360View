@@ -2,13 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 
 const KitchenViewer = () => {
   const skyRef = useRef(null);
+  const cameraRigRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(60000); // default rotation speed
-  //const [currentImage, setCurrentImage] = useState("/images/kamalsir.jpeg");
   const [currentImage, setCurrentImage] = useState("/images/kitchen2.jpg");
   const [fov, setFov] = useState(80); // default FOV value
   const cameraRef = useRef(null);
-
   const thumbnails = [
     "/images/elevation.webp",
     "/images/livingroom.webp",
@@ -33,48 +32,63 @@ const KitchenViewer = () => {
           skyRef.current.removeAttribute("animation");
         }
       }
-
       if (cameraRef.current) {
-        cameraRef.current.setAttribute("camera", `fov: ${fov}`);
+        cameraRef.current.setAttribute("camera", { fov });
       }
     },
     [currentImage, speed, isPlaying, fov]
   );
 
-  const handleThumbnailClick = imgSrc => {
-    setCurrentImage(imgSrc);
-  };
+  useEffect(() => {
+    const rig = cameraRigRef.current;
+    if (!rig) return;
 
-  const handlePause = () => {
-    setIsPlaying(false);
-  };
+    const handlePinch = e => {
+      const scale = rig.getAttribute("scale");
+      const newScale = e.detail.scale;
+      const clamped = Math.min(Math.max(scale.x * newScale, 0.5), 3);
+      rig.setAttribute("scale", `${clamped} ${clamped} ${clamped}`);
+    };
 
-  const handlePlay = () => {
-    setIsPlaying(true);
-  };
+    rig.addEventListener("pinchmove", handlePinch);
+    return () => {
+      rig.removeEventListener("pinchmove", handlePinch);
+    };
+  }, []);
 
-  const increaseSpeed = () => {
-    setSpeed(prev => Math.max(prev - 10000, 10000));
-  };
-
-  const decreaseSpeed = () => {
-    setSpeed(prev => prev + 10000);
+  const handleThumbnailClick = imgSrc => setCurrentImage(imgSrc);
+  const handlePause = () => setIsPlaying(false);
+  const handlePlay = () => setIsPlaying(true);
+  const increaseSpeed = () => setSpeed(prev => Math.max(prev - 10000, 10000));
+  const decreaseSpeed = () => setSpeed(prev => prev + 10000);
+  const resetZoom = () => {
+    if (cameraRigRef.current) {
+      cameraRigRef.current.setAttribute("scale", "1 1 1");
+    }
+    setFov(80); // reset to default FOV
   };
 
   return (
     <div className="w-full h-screen overflow-hidden relative">
       {/* A-Frame Viewer */}
       <a-scene embedded vr-mode-ui="enabled: false">
+        <a-entity
+          id="cameraRig"
+          ref={cameraRigRef}
+          gesture-detector
+          scale="1 1 1"
+        >
+          <a-camera
+            ref={cameraRef}
+            wasd-controls-enabled="false"
+            look-controls
+            position="0 1.6 0"
+          />
+        </a-entity>
         <a-sky ref={skyRef} rotation="0 160 0" />
-        <a-camera
-          ref={cameraRef}
-          wasd-controls-enabled="false"
-          look-controls
-          camera={`fov: ${fov}`}
-        />
       </a-scene>
 
-      {/* Thumbnail Slider */}
+      {/* Thumbnail Images */}
       <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 flex space-x-4 px-4">
         {thumbnails.map((src, index) =>
           <div
@@ -108,9 +122,10 @@ const KitchenViewer = () => {
             >
               <i className="ri-play-circle-fill" />
             </button>}
+
         <button
           onClick={decreaseSpeed}
-          className="text-black-500 text-xl hover:scale-110 transition-transform border-2 rounded"
+          className="text-blue-500 text-xl hover:scale-110 transition-transform"
           title="Slower"
         >
           <i className="ri-subtract-line" />
@@ -118,7 +133,7 @@ const KitchenViewer = () => {
 
         <button
           onClick={increaseSpeed}
-          className="text-black-500 text-xl hover:scale-110 transition-transform border-2 rounded"
+          className="text-blue-500 text-xl hover:scale-110 transition-transform"
           title="Faster"
         >
           <i className="ri-add-line" />
@@ -131,12 +146,21 @@ const KitchenViewer = () => {
         >
           <i className="ri-zoom-in-line" />
         </button>
+
         <button
           onClick={() => setFov(prev => Math.min(prev + 5, 120))}
           className="text-purple-500 text-xl hover:scale-110 transition-transform"
           title="Zoom Out"
         >
           <i className="ri-zoom-out-line" />
+        </button>
+
+        <button
+          onClick={resetZoom}
+          className="text-gray-700 text-xl hover:scale-110 transition-transform"
+          title="Reset Zoom"
+        >
+          <i className="ri-refresh-line" />
         </button>
       </div>
     </div>
