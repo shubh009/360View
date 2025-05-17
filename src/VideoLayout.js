@@ -3,11 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 const KitchenViewer = () => {
   const skyRef = useRef(null);
   const cameraRigRef = useRef(null);
+  const cameraRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(60000); // default rotation speed
   const [currentImage, setCurrentImage] = useState("/images/kitchen2.jpg");
   const [fov, setFov] = useState(80); // default FOV value
-  const cameraRef = useRef(null);
   const thumbnails = [
     "/images/elevation.webp",
     "/images/livingroom.webp",
@@ -32,28 +32,67 @@ const KitchenViewer = () => {
           skyRef.current.removeAttribute("animation");
         }
       }
-      if (cameraRef.current) {
-        cameraRef.current.setAttribute("camera", { fov });
-      }
     },
-    [currentImage, speed, isPlaying, fov]
+    [currentImage, speed, isPlaying]
   );
 
+  // Sync camera FOV when fov state changes
+  useEffect(
+    () => {
+      if (cameraRef.current) {
+        cameraRef.current.setAttribute("camera", `fov: ${fov}`);
+      }
+    },
+    [fov]
+  );
+
+  // Pinch-to-zoom gesture implementation
   useEffect(() => {
     const rig = cameraRigRef.current;
     if (!rig) return;
 
-    const handlePinch = e => {
-      const scale = cameraRigRef.current.getAttribute("scale");
-      const newScale = e.detail.scale;
-      const current = parseFloat(scale.x);
-      const next = Math.min(Math.max(current * newScale, 0.5), 3);
-      cameraRigRef.current.setAttribute("scale", `${next} ${next} ${next}`);
+    let initialDistance = null;
+    let initialScale = 1;
+
+    const getDistance = touches => {
+      const [touch1, touch2] = touches;
+      const dx = touch2.clientX - touch1.clientX;
+      const dy = touch2.clientY - touch1.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
     };
 
-    rig.addEventListener("pinchmove", handlePinch);
+    const onTouchStart = e => {
+      if (e.touches.length === 2) {
+        initialDistance = getDistance(e.touches);
+        const scale = rig.getAttribute("scale");
+        initialScale = parseFloat(scale.x);
+      }
+    };
+
+    const onTouchMove = e => {
+      if (e.touches.length === 2 && initialDistance !== null) {
+        const currentDistance = getDistance(e.touches);
+        let scaleFactor = currentDistance / initialDistance;
+        let nextScale = initialScale * scaleFactor;
+        nextScale = Math.min(Math.max(nextScale, 0.5), 3); // clamp between 0.5 and 3
+        rig.setAttribute("scale", `${nextScale} ${nextScale} ${nextScale}`);
+      }
+    };
+
+    const onTouchEnd = e => {
+      if (e.touches.length < 2) {
+        initialDistance = null;
+      }
+    };
+
+    rig.addEventListener("touchstart", onTouchStart, { passive: true });
+    rig.addEventListener("touchmove", onTouchMove, { passive: true });
+    rig.addEventListener("touchend", onTouchEnd);
+
     return () => {
-      rig.removeEventListener("pinchmove", handlePinch);
+      rig.removeEventListener("touchstart", onTouchStart);
+      rig.removeEventListener("touchmove", onTouchMove);
+      rig.removeEventListener("touchend", onTouchEnd);
     };
   }, []);
 
@@ -66,19 +105,14 @@ const KitchenViewer = () => {
     if (cameraRigRef.current) {
       cameraRigRef.current.setAttribute("scale", "1 1 1");
     }
-    setFov(80); // reset to default FOV
+    setFov(80); // reset FOV
   };
 
   return (
     <div className="w-full h-screen overflow-hidden relative">
       {/* A-Frame Viewer */}
       <a-scene embedded vr-mode-ui="enabled: false">
-        <a-entity
-          id="cameraRig"
-          ref={cameraRigRef}
-          gesture-detector
-          scale="1 1 1"
-        >
+        <a-entity id="cameraRig" ref={cameraRigRef} scale="1 1 1">
           <a-camera
             ref={cameraRef}
             wasd-controls-enabled="false"
@@ -89,7 +123,7 @@ const KitchenViewer = () => {
         <a-sky ref={skyRef} rotation="0 160 0" />
       </a-scene>
 
-      {/* Thumbnail Images */}
+      {/* Thumbnails */}
       <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 flex space-x-4 px-4">
         {thumbnails.map((src, index) =>
           <div
@@ -106,7 +140,7 @@ const KitchenViewer = () => {
         )}
       </div>
 
-      {/* Control Panel */}
+      {/* Controls */}
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-4 z-20">
         {isPlaying
           ? <button
