@@ -3,13 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 const KitchenViewer = () => {
   const skyRef = useRef(null);
   const cameraRigRef = useRef(null);
-  const cameraRef = useRef(null);
-
   const [isPlaying, setIsPlaying] = useState(true);
-  const [speed, setSpeed] = useState(60000); // default rotation speed
+  const [speed, setSpeed] = useState(60000);
   const [currentImage, setCurrentImage] = useState("/images/kitchen2.jpg");
-  const [fov, setFov] = useState(80); // default FOV value
-
+  const [fov, setFov] = useState(80);
+  const cameraRef = useRef(null);
   const thumbnails = [
     "/images/elevation.webp",
     "/images/livingroom.webp",
@@ -18,7 +16,6 @@ const KitchenViewer = () => {
     "/images/hall.webp"
   ];
 
-  // Update sky rotation animation and camera FOV on state changes
   useEffect(
     () => {
       if (skyRef.current) {
@@ -42,33 +39,32 @@ const KitchenViewer = () => {
     [currentImage, speed, isPlaying, fov]
   );
 
-  // Gesture handling with aframe-gesture-detector
   useEffect(() => {
     const rig = cameraRigRef.current;
     if (!rig) return;
 
-    let initialScale = 1;
+    let baseScale = 1;
 
-    const onPinchStarted = () => {
+    const handleTwoFingerStart = () => {
       const scale = rig.getAttribute("scale");
-      initialScale = parseFloat(scale.x);
+      baseScale = parseFloat(scale.x);
     };
 
-    const onPinchMoved = event => {
-      const newScale = initialScale * event.detail.scale;
-      const clampedScale = Math.min(Math.max(newScale, 0.5), 3);
-      rig.setAttribute(
-        "scale",
-        `${clampedScale} ${clampedScale} ${clampedScale}`
-      );
+    const handleTwoFingerMove = event => {
+      const spread = event.detail.spread || 1;
+      let newScale = baseScale * spread;
+
+      // Clamp scale between 0.5x and 3x
+      newScale = Math.max(0.5, Math.min(3, newScale));
+      rig.setAttribute("scale", `${newScale} ${newScale} ${newScale}`);
     };
 
-    rig.addEventListener("pinchstarted", onPinchStarted);
-    rig.addEventListener("pinchmoved", onPinchMoved);
+    rig.addEventListener("twofingerstart", handleTwoFingerStart);
+    rig.addEventListener("twofingermove", handleTwoFingerMove);
 
     return () => {
-      rig.removeEventListener("pinchstarted", onPinchStarted);
-      rig.removeEventListener("pinchmoved", onPinchMoved);
+      rig.removeEventListener("twofingerstart", handleTwoFingerStart);
+      rig.removeEventListener("twofingermove", handleTwoFingerMove);
     };
   }, []);
 
@@ -81,30 +77,29 @@ const KitchenViewer = () => {
     if (cameraRigRef.current) {
       cameraRigRef.current.setAttribute("scale", "1 1 1");
     }
-    setFov(80); // reset to default FOV
+    setFov(80);
   };
 
   return (
     <div className="w-full h-screen overflow-hidden relative">
       {/* A-Frame Viewer */}
-      <a-scene embedded vr-mode-ui="enabled: false">
+      <a-scene embedded vr-mode-ui="enabled: false" gesture-detector>
         <a-entity
           id="cameraRig"
           ref={cameraRigRef}
-          gesture-detector
+          position="0 1.6 0"
           scale="1 1 1"
         >
           <a-camera
             ref={cameraRef}
             wasd-controls-enabled="false"
             look-controls
-            position="0 1.6 0"
           />
         </a-entity>
         <a-sky ref={skyRef} rotation="0 160 0" />
       </a-scene>
 
-      {/* Thumbnail Images */}
+      {/* Thumbnails */}
       <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 flex space-x-4 px-4">
         {thumbnails.map((src, index) =>
           <div
@@ -121,7 +116,7 @@ const KitchenViewer = () => {
         )}
       </div>
 
-      {/* Control Panel */}
+      {/* Controls */}
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-4 z-20">
         {isPlaying
           ? <button
