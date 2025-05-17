@@ -44,10 +44,11 @@ const KitchenViewer = () => {
     if (!rig) return;
 
     const handlePinch = e => {
-      const scale = rig.getAttribute("scale");
+      const scale = cameraRigRef.current.getAttribute("scale");
       const newScale = e.detail.scale;
-      const clamped = Math.min(Math.max(scale.x * newScale, 0.5), 3);
-      rig.setAttribute("scale", `${clamped} ${clamped} ${clamped}`);
+      const current = parseFloat(scale.x);
+      const next = Math.min(Math.max(current * newScale, 0.5), 3);
+      cameraRigRef.current.setAttribute("scale", `${next} ${next} ${next}`);
     };
 
     rig.addEventListener("pinchmove", handlePinch);
