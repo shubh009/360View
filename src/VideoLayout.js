@@ -6,12 +6,14 @@ const KitchenViewer = () => {
   const [speed, setSpeed] = useState(60000); // default rotation speed
   //const [currentImage, setCurrentImage] = useState("/images/kamalsir.jpeg");
   const [currentImage, setCurrentImage] = useState("/images/kitchen2.jpg");
+  const [fov, setFov] = useState(80); // default FOV value
+  const cameraRef = useRef(null);
 
   const thumbnails = [
     "/images/elevation.webp",
     "/images/livingroom.webp",
-    "/images/bedroom.webp",
-    "/images/agrakitchen.jpeg",
+    "/images/kamalsir.jpeg",
+    "/images/kitchen2.jpg",
     "/images/hall.webp"
   ];
 
@@ -31,8 +33,12 @@ const KitchenViewer = () => {
           skyRef.current.removeAttribute("animation");
         }
       }
+
+      if (cameraRef.current) {
+        cameraRef.current.setAttribute("camera", `fov: ${fov}`);
+      }
     },
-    [currentImage, speed, isPlaying]
+    [currentImage, speed, isPlaying, fov]
   );
 
   const handleThumbnailClick = imgSrc => {
@@ -60,7 +66,12 @@ const KitchenViewer = () => {
       {/* A-Frame Viewer */}
       <a-scene embedded vr-mode-ui="enabled: false">
         <a-sky ref={skyRef} rotation="0 160 0" />
-        <a-camera wasd-controls-enabled="false" look-controls />
+        <a-camera
+          ref={cameraRef}
+          wasd-controls-enabled="false"
+          look-controls
+          camera={`fov: ${fov}`}
+        />
       </a-scene>
 
       {/* Thumbnail Slider */}
@@ -99,17 +110,33 @@ const KitchenViewer = () => {
             </button>}
         <button
           onClick={decreaseSpeed}
-          className="text-blue-500 text-xl hover:scale-110 transition-transform"
+          className="text-black-500 text-xl hover:scale-110 transition-transform border-2 rounded"
           title="Slower"
         >
           <i className="ri-subtract-line" />
         </button>
+
         <button
           onClick={increaseSpeed}
-          className="text-blue-500 text-xl hover:scale-110 transition-transform"
+          className="text-black-500 text-xl hover:scale-110 transition-transform border-2 rounded"
           title="Faster"
         >
           <i className="ri-add-line" />
+        </button>
+
+        <button
+          onClick={() => setFov(prev => Math.max(prev - 5, 30))}
+          className="text-purple-500 text-xl hover:scale-110 transition-transform"
+          title="Zoom In"
+        >
+          <i className="ri-zoom-in-line" />
+        </button>
+        <button
+          onClick={() => setFov(prev => Math.min(prev + 5, 120))}
+          className="text-purple-500 text-xl hover:scale-110 transition-transform"
+          title="Zoom Out"
+        >
+          <i className="ri-zoom-out-line" />
         </button>
       </div>
     </div>
